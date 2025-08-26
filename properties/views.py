@@ -1,4 +1,4 @@
-from django.http import HttpResponse
+from django.http import JsonResponse
 from django.core.cache import cache
 from django.views.decorators.cache import cache_page
 from .models import Property
@@ -6,21 +6,27 @@ from .models import Property
 # View-level caching for 15 minutes
 @cache_page(60 * 15)
 def property_list(request):
-    # Low-level caching: cache query result
+    # Low-level caching: cache queryset for 5 minutes
     properties = cache.get('all_properties')
 
     if not properties:
         print("Cache miss - querying database")
-        # Query the database only if cache is empty
         properties = list(Property.objects.all())
-        cache.set('all_properties', properties, timeout=60*5)  # cache for 5 minutes
+        cache.set('all_properties', properties, timeout=60*5)
     else:
         print("Cache hit")
 
-    # Build plain text response
-    response_text = "\n".join([f"{p.title} - ${p.price}" for p in properties])
-    if not response_text:
-        response_text = "No properties found."
+    # Convert queryset to list of dicts for JSON response
+    properties_data = [
+        {
+            "id": p.id,
+            "title": p.title,
+            "description": p.description,
+            "price": float(p.price),
+            "location": p.location,
+            "created_at": p.created_at.isoformat(),
+        }
+        for p in properties
+    ]
 
-    return HttpResponse(response_text, content_type="text/plain")
-
+    return JsonResponse({"properties": properties_data})
