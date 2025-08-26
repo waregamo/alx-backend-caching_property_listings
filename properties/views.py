@@ -1,7 +1,10 @@
 from django.http import HttpResponse
 from django.core.cache import cache
+from django.views.decorators.cache import cache_page
 from .models import Property
 
+# View-level caching for 15 minutes
+@cache_page(60 * 15)
 def property_list(request):
     # Low-level caching: cache query result
     properties = cache.get('all_properties')
@@ -14,8 +17,10 @@ def property_list(request):
     else:
         print("Cache hit")
 
+    # Build plain text response
     response_text = "\n".join([f"{p.title} - ${p.price}" for p in properties])
     if not response_text:
         response_text = "No properties found."
 
     return HttpResponse(response_text, content_type="text/plain")
+
